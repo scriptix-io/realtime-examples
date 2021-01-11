@@ -26,10 +26,12 @@ async def writer(
 
     fp = open(args.input_stream, "rb")
     while True:
-        data = await loop.run_in_executor(threadpool, lambda: fp.read(32000))
+        data = await loop.run_in_executor(threadpool, fp.read, 32768)
         if not data:
+            print("EOF")
             break
         await websocket.send(data)
+        await asyncio.sleep(0.25)
 
     # Notify we are done
     await websocket.send('{"action": "stop"}')
@@ -43,7 +45,8 @@ async def reader(websocket):
         print(message)
 
         # Stop when stopped
-        if message == '{"state": "stopped"}':
+        if message == '{"state": "stopped"}' or message == '{"state":"stopped"}':
+            print("Stopped")
             break
 
 
@@ -61,8 +64,9 @@ async def run_connection(args: argparse.Namespace) -> None:
     # Wait for listening event
     first_message = await websocket.recv()
 
-    if isinstance(first_message, str) and '"state": "listening"' in first_message:
+    if isinstance(first_message, str) and '"listening"' in first_message:
         print("Server is listening")
+        print(first_message)
 
         # Start async reader and writer
         task_reader = asyncio.create_task(reader(websocket))
@@ -72,6 +76,10 @@ async def run_connection(args: argparse.Namespace) -> None:
         w = await asyncio.wait(
             [task_writer, task_reader], return_when=asyncio.FIRST_EXCEPTION
         )
+
+        if w[0] == task_reader:
+            print("Reader finished")
+            await task_writer
     else:
         print("Server not listening")
         print(first_message)
