@@ -2,14 +2,14 @@
 
 ## Run with (Dutch) BNR Radio as example
 #
-#  curl -s  http://icecast-bnr.cdp.triple-it.nl/bnr_mp3_96_06 |\
-#       ffmpeg -loglevel panic -i - -ac 1 -acodec pcm_s16le -ar 16000 -f wav - |\
+#  ffmpeg -loglevel panic -i https://stream.bnr.nl/bnr_mp3_128_20 -ac 1 -acodec pcm_s16le -ar 16000 -f wav - |\
 #       python3.7 client.py nl-nl token
 
 
 import websockets
 import asyncio
 import argparse
+import sys
 from concurrent.futures.thread import ThreadPoolExecutor
 
 
@@ -24,7 +24,7 @@ async def writer(
     loop = asyncio.get_event_loop()
     threadpool = ThreadPoolExecutor(1)
 
-    fp = open(args.input_stream, "rb")
+    fp = sys.stdin.buffer
     while True:
         data = await loop.run_in_executor(threadpool, fp.read, 32768)
         if not data:
