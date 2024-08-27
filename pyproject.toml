@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "realtime-examples"
+version = "0.1.0"
+description = ""
+authors = ["edihasaj <edihasaj@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+websockets = "^13.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
