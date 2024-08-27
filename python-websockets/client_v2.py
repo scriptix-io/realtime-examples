@@ -10,7 +10,11 @@ API_KEY = "YOUR_API_KEY"  ## Your API key, you can get it from https://scriptix.
 
 
 async def writer(websocket: websockets.WebSocketClientProtocol) -> None:
-    """Runs ffprobe and sends its output to the websocket."""
+    """
+    Runs ffmpeg to capture audio from the stream and sends the processed audio to the websocket.
+
+    :param websocket: WebSocket connection to the transcription server.
+    """
 
     # Command to run ffprobe
     command = [
@@ -50,6 +54,11 @@ async def writer(websocket: websockets.WebSocketClientProtocol) -> None:
 
 
 async def reader(websocket: websockets.WebSocketClientProtocol) -> None:
+    """
+    Reads and prints messages from the WebSocket server.
+
+    :param websocket: WebSocket connection to the transcription server.
+    """
     async for message in websocket:
         print(message)
         if '"state":"stopped"' in message:
@@ -58,6 +67,9 @@ async def reader(websocket: websockets.WebSocketClientProtocol) -> None:
 
 
 async def run_connection() -> None:
+    """
+    Establishes a WebSocket connection to the transcription server and manages the streaming process.
+    """
     async with websockets.connect(
         f"wss://realtime.scriptix.io/v2/realtime?language={LANGUAGE}",
         extra_headers={"x-zoom-s2t-key": API_KEY},
@@ -77,8 +89,12 @@ async def run_connection() -> None:
 
 
 def main():
+    """
+    Main function to start the asynchronous WebSocket connection.
+    """
     asyncio.run(run_connection())
 
 
+# Entry point check
 if __name__ == "__main__":
     main()
