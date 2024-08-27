@@ -6,7 +6,7 @@ import asyncio
 STREAM_URL = "https://stream.bnr.nl/bnr_mp3_128_20"  ## Your streaming URL
 LANGUAGE = "nl"  ## "nl" for Dutch, "en" for English, .... you can use this link for more languages: https://apidocs.scriptix.io/models/overview/
 API_KEY = "YOUR_API_KEY"  ## Your API key, you can get it from https://scriptix.app/settings/api (you need to be logged in),
-                                # generate a new token of type realtime
+# generate a new token of type realtime
 
 
 async def writer(websocket: websockets.WebSocketClientProtocol) -> None:
