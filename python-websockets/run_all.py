@@ -145,7 +145,7 @@ async def _reader(ws, run: Run, stop_after_final: bool = False) -> None:
 async def _connect(url: str, token: str, language: str):
     return await websockets.connect(
         f"{url}?language={language}",
-        extra_headers={"x-zoom-s2t-key": token},
+        additional_headers={"x-zoom-s2t-key": token},
         ssl=SSL_CTX,
         open_timeout=15,
         close_timeout=5,
@@ -401,17 +401,37 @@ def _format_run(run: Run) -> str:
 async def main():
     p_pcm = _pcm_from_wav(PARAKEET_WAV)
     k_pcm = _pcm_from_wav(KALDI_WAV)
-    print(f"# Parakeet audio: {len(p_pcm)} bytes ({len(p_pcm)/(16000*2):.1f}s, en)")
-    print(f"# Kaldi audio:    {len(k_pcm)} bytes ({len(k_pcm)/(16000*2):.1f}s, nl-pol)")
+    print(f"# en.wav: {len(p_pcm)} bytes ({len(p_pcm)/(16000*2):.1f}s)")
+    print(f"# nl.wav: {len(k_pcm)} bytes ({len(k_pcm)/(16000*2):.1f}s)")
+    print()
+    print(
+        "# NOTE: the Parakeet CPU image bundles the English-only streaming "
+        "TDT (multilingual v3 has no streaming ONNX upstream). The Dutch "
+        "*content* will be garbage, but the *protocol/latency/finals/drain/"
+        "churn* metrics on nl.wav are still apples-to-apples vs Kaldi."
+    )
     print()
 
-    print("==================== PARAKEET CPU (staging) ====================")
-    p_runs = await run_backend("parakeet", PARAKEET_URL, PARAKEET_TOKEN, PARAKEET_LANG, p_pcm)
-    for r in p_runs:
+    print("==================== PARAKEET CPU (en.wav, English) ====================")
+    p_runs_en = await run_backend(
+        "parakeet-en", PARAKEET_URL, PARAKEET_TOKEN, PARAKEET_LANG, p_pcm
+    )
+    for r in p_runs_en:
         print(_format_run(r))
         print()
 
-    print("==================== KALDI prod ====================")
+    print("==================== PARAKEET CPU (nl.wav, same stream as Kaldi) ====================")
+    # ``language=en`` even on nl.wav — the bundle has no nl streaming model,
+    # but we want behavior parity (finals / state:stopped / churn /
+    # mid-drop / reconnect), not WER, on the identical Dutch waveform.
+    p_runs_nl = await run_backend(
+        "parakeet-nl", PARAKEET_URL, PARAKEET_TOKEN, PARAKEET_LANG, k_pcm
+    )
+    for r in p_runs_nl:
+        print(_format_run(r))
+        print()
+
+    print("==================== KALDI prod (nl.wav, nl-pol) ====================")
     k_runs = await run_backend("kaldi", KALDI_URL, KALDI_TOKEN, KALDI_LANG, k_pcm)
     for r in k_runs:
         print(_format_run(r))
