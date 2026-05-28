@@ -121,8 +121,16 @@ async def _reader(ws, stats: RunStats) -> None:
 
 
 def _extract_text(obj: dict) -> tuple[Optional[str], bool]:
+    # Unified Kaldi-shape (current realtime engine): partials are
+    # {"partial": "..."}, finals are {"result": [[w,s,e,c],...], "text": "..."}.
+    if "partial" in obj:
+        return str(obj["partial"]), False
+    if "text" in obj and isinstance(obj.get("result"), list):
+        return str(obj["text"]), True
+    # v2 Whisper format: {"transcript": "...", "is_final": bool}
     if "transcript" in obj:
         return str(obj["transcript"]), bool(obj.get("is_final"))
+    # Legacy Kaldi gstreamer: {"result": {"hypotheses": [{"transcript": ...}], "final": bool}}
     result = obj.get("result")
     if isinstance(result, dict):
         hyps = result.get("hypotheses") or []
@@ -144,14 +152,22 @@ async def _writer(ws, pcm: bytes, stats: RunStats, chunk_ms: int = 200) -> None:
 async def _drive(url: str, token: str, language: str, pcm: bytes, label: str) -> RunStats:
     stats = RunStats(backend=label, started_at=time.monotonic())
     full_url = f"{url}?language={language}"
+    # websockets >=14 renamed ``extra_headers`` -> ``additional_headers``.
+    import inspect
+
+    hdr_kw = (
+        "additional_headers"
+        if "additional_headers" in inspect.signature(websockets.connect).parameters
+        else "extra_headers"
+    )
+    connect_kwargs = {
+        hdr_kw: {"x-zoom-s2t-key": token},
+        "open_timeout": 10,
+        "close_timeout": 5,
+        "max_size": None,
+    }
     try:
-        async with websockets.connect(
-            full_url,
-            extra_headers={"x-zoom-s2t-key": token},
-            open_timeout=10,
-            close_timeout=5,
-            max_size=None,
-        ) as ws:
+        async with websockets.connect(full_url, **connect_kwargs) as ws:
             await ws.send('{"action": "start"}')
             try:
                 listening = await asyncio.wait_for(ws.recv(), timeout=10)
